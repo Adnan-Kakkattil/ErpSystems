@@ -111,9 +111,10 @@ def apply_leave():
     if request.method == 'POST':
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
+        leave_type = request.form.get('leave_type', 'General').strip() or 'General'
         reason = request.form.get('reason', '').strip()
         
-        if not start_date or not end_date or not reason:
+        if not start_date or not end_date or not leave_type or not reason:
             flash('All fields are required.', 'danger')
             return redirect(url_for('student.apply_leave'))
         
@@ -129,6 +130,7 @@ def apply_leave():
                 user_id=current_user.id,
                 start_date=start,
                 end_date=end,
+                leave_type=leave_type,
                 reason=reason,
                 status='pending'
             )
@@ -167,7 +169,7 @@ def view_notes():
     
     # Get notes for student's department and semester
     notes = Note.query.filter(
-        (Note.department == student.department) |
+        (Note.department == student.department_ref.code) |
         (Note.semester == student.semester) |
         (Note.department == None)
     ).order_by(Note.upload_date.desc()).all()

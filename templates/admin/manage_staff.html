@@ -25,16 +25,21 @@
                     <h3 class="text-lg font-bold text-gray-800">{{ member.name }}</h3>
                     <p class="text-sm text-indigo-600 font-semibold">{{ member.designation }}</p>
                 </div>
-                <form method="POST" action="{{ url_for('admin.delete_staff', staff_id=member.id) }}" 
-                      onsubmit="return confirm('Delete this staff member?');" style="display: inline;">
-                    <button type="submit" class="text-red-600 hover:text-red-800">
-                        <i class="fas fa-trash text-lg"></i>
-                    </button>
-                </form>
+                <div class="space-x-2">
+                    <a href="{{ url_for('admin.edit_staff', staff_id=member.id) }}" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit text-lg"></i>
+                    </a>
+                    <form method="POST" action="{{ url_for('admin.delete_staff', staff_id=member.id) }}" 
+                          onsubmit="return confirm('Delete this staff member?');" style="display: inline;">
+                        <button type="submit" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash text-lg"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
 
             <div class="text-sm text-gray-600 space-y-1">
-                <p><strong>Department:</strong> {{ member.department }}</p>
+                <p><strong>Department:</strong> {{ member.department_ref.name }}</p>
                 {% if member.phone %}
                 <p><strong>Phone:</strong> {{ member.phone }}</p>
                 {% endif %}

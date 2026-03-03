@@ -22,8 +22,15 @@
         <div class="bg-white rounded-lg shadow-md p-6 border-l-4 {% if leave.status == 'approved' %}border-green-500{% elif leave.status == 'rejected' %}border-red-500{% else %}border-yellow-500{% endif %}">
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h3 class="text-lg font-bold text-gray-800">{{ leave.start_date }} to {{ leave.end_date }}</h3>
-                    <p class="text-sm text-gray-600 mt-1">Applied on: {{ leave.applied_at.strftime('%d %b %Y, %H:%M') }}</p>
+                    <h3 class="text-lg font-bold text-gray-800">
+                        {{ leave.start_date }} to {{ leave.end_date }}
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Type: <span class="font-semibold">{{ leave.leave_type or 'General' }}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Applied on: {{ leave.applied_at.strftime('%d %b %Y, %H:%M') }}
+                    </p>
                 </div>
                 <span class="px-4 py-2 rounded-full text-sm font-semibold
                     {% if leave.status == 'approved' %}

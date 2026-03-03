@@ -1,6 +1,6 @@
 import os
 from app import create_app, db
-from app.models import User, Student, Faculty, Attendance, Leave, Fee, Note, Certificate, Timetable, Staff
+from app.models import User, Student, Faculty, Attendance, Leave, Fee, Note, Certificate, Timetable, Staff, Department, Course, Enrollment
 
 app = create_app(os.getenv('FLASK_ENV', 'development'))
 
@@ -18,7 +18,10 @@ def make_shell_context():
         'Note': Note,
         'Certificate': Certificate,
         'Timetable': Timetable,
-        'Staff': Staff
+        'Staff': Staff,
+        'Department': Department,
+        'Course': Course,
+        'Enrollment': Enrollment
     }
 
 if __name__ == '__main__':

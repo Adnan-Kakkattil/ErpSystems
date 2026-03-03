@@ -1,6 +1,6 @@
-{% extends "base_portal.html" %}
+{% extends "base_student_portal.html" if current_user.role == 'student' else "base_portal.html" %}
 
-{% block title %}Timetable - College ERP{% endblock %}
+{% block title %}Timetable - LUMEN ERP{% endblock %}
 
 {% block content %}
 <div class="space-y-6">

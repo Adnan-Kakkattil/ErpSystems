@@ -52,10 +52,30 @@ def create_app(config_name='development'):
     return app
 
 def _create_default_users():
-    """Create default admin, faculty, and student users if they don't exist"""
-    from app.models import User, Student, Faculty
+    """Create default admin, faculty, student, and department records if they don't exist"""
+    from app.models import User, Student, Faculty, Department
     
-    # Default admin
+    # Create default departments if they don't exist
+    departments = [
+        {'name': 'Computer Science', 'code': 'CS', 'head': 'Dr. John Smith'},
+        {'name': 'Electronics and Communications', 'code': 'EC', 'head': 'Dr. Sarah Johnson'},
+        {'name': 'Mechanical Engineering', 'code': 'ME', 'head': 'Dr. Robert Brown'},
+        {'name': 'Civil Engineering', 'code': 'CE', 'head': 'Dr. Emily Davis'},
+        {'name': 'Information Technology', 'code': 'IT', 'head': 'Dr. Michael Wilson'}
+    ]
+    
+    for dept_info in departments:
+        if not Department.query.filter_by(code=dept_info['code']).first():
+            dept = Department(
+                name=dept_info['name'],
+                code=dept_info['code'],
+                head=dept_info['head']
+            )
+            db.session.add(dept)
+    
+    db.session.commit()
+    
+    # Default admin (no department needed)
     if not User.query.filter_by(username='admin').first():
         admin = User(
             username='admin',
@@ -69,6 +89,9 @@ def _create_default_users():
     
     # Default faculty
     if not User.query.filter_by(username='faculty').first():
+        # Get CS department
+        cs_dept = Department.query.filter_by(code='CS').first()
+        
         faculty_user = User(
             username='faculty',
             email='faculty@erp.edu',
@@ -79,17 +102,23 @@ def _create_default_users():
         db.session.add(faculty_user)
         db.session.commit()
         
-        faculty = Faculty(
-            user_id=faculty_user.id,
-            designation='Assistant Professor',
-            department='Computer Science',
-            phone='9876543210'
-        )
-        db.session.add(faculty)
-        db.session.commit()
+        if cs_dept:
+            faculty = Faculty(
+                user_id=faculty_user.id,
+                department_id=cs_dept.id,
+                designation='Assistant Professor',
+                phone='9876543210',
+                qualification='PhD',
+                specialization='Database Systems'
+            )
+            db.session.add(faculty)
+            db.session.commit()
     
     # Default student
     if not User.query.filter_by(username='student').first():
+        # Get CS department
+        cs_dept = Department.query.filter_by(code='CS').first()
+        
         student_user = User(
             username='student',
             email='student@erp.edu',
@@ -100,12 +129,13 @@ def _create_default_users():
         db.session.add(student_user)
         db.session.commit()
         
-        student = Student(
-            user_id=student_user.id,
-            roll_no='CS2024001',
-            department='Computer Science',
-            semester=4,
-            phone='9123456789'
-        )
-        db.session.add(student)
-        db.session.commit()
+        if cs_dept:
+            student = Student(
+                user_id=student_user.id,
+                roll_no='CS2024001',
+                department_id=cs_dept.id,
+                semester=4,
+                phone='9123456789'
+            )
+            db.session.add(student)
+            db.session.commit()

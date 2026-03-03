@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, request, send_file
 from flask_login import login_required, current_user
 from app.faculty import faculty_bp
-from app.models import db, Attendance, Student, Note, Leave
+from app.models import db, Attendance, Student, Note, Leave, Timetable, Enrollment, Notification
 from app.utils.file_handler import save_file_securely
 from datetime import datetime
 import os
@@ -17,7 +17,7 @@ def dashboard():
     faculty = current_user.faculty
     
     # Get students in faculty's department
-    students = Student.query.filter_by(department=faculty.department).all()
+    students = Student.query.filter_by(department_id=faculty.department_id).all()
     
     # Pending leaves to review
     pending_leaves = Leave.query.filter_by(status='pending').all()
@@ -25,22 +25,51 @@ def dashboard():
     # Notes uploaded
     notes = Note.query.filter_by(user_id=current_user.id).all()
     
+    # Today's timetable for this faculty's department
+    today = datetime.utcnow().date()
+    day_name = today.strftime('%A')
+    todays_timetable = Timetable.query.filter_by(
+        department=faculty.department_ref.code,
+        day_of_week=day_name
+    ).order_by(Timetable.start_time).all()
+    
+    classes_today = len(todays_timetable)
+    next_class = None
+    now_time_str = datetime.utcnow().strftime('%H:%M')
+    for slot in todays_timetable:
+        if slot.start_time > now_time_str:
+            next_class = f"{slot.subject} at {slot.start_time}"
+            break
+    
     stats = {
         'total_students': len(students),
         'pending_leaves': len(pending_leaves),
-        'notes_uploaded': len(notes)
+        'notes_uploaded': len(notes),
+        'classes_today': classes_today
     }
     
-    return render_template('dashboard/faculty_dashboard.html',
-                         faculty=faculty,
-                         stats=stats,
-                         students=students,
-                         pending_leaves=pending_leaves)
+    # Active notifications relevant to faculty
+    notifications = Notification.query.filter(
+        Notification.is_active.is_(True),
+        Notification.target_audience.in_(['all', 'faculty'])
+    ).order_by(Notification.created_at.desc()).limit(10).all()
+    
+    return render_template(
+        'dashboard/faculty_dashboard.html',
+        faculty=faculty,
+        stats=stats,
+        students=students,
+        pending_leaves=pending_leaves,
+        todays_timetable=todays_timetable,
+        next_class=next_class,
+        notifications=notifications,
+        today_str=today.strftime('%B %d, %Y')
+    )
 
 @faculty_bp.route('/mark-attendance', methods=['GET', 'POST'])
 @login_required
 def mark_attendance():
-    """Mark attendance for students"""
+    """Mark attendance for students according to timetable"""
     if current_user.role != 'faculty':
         flash('Unauthorized access.', 'danger')
         return redirect(url_for('auth.login'))
@@ -48,10 +77,17 @@ def mark_attendance():
     faculty = current_user.faculty
     
     if request.method == 'POST':
+        timetable_id = request.form.get('timetable_id', type=int)
         attendance_date = request.form.get('attendance_date')
         
-        if not attendance_date:
-            flash('Please select a date.', 'danger')
+        if not timetable_id or not attendance_date:
+            flash('Please select a timetable entry and date.', 'danger')
+            return redirect(url_for('faculty.mark_attendance'))
+        
+        # Get the timetable entry
+        timetable = Timetable.query.get(timetable_id)
+        if not timetable:
+            flash('Timetable entry not found.', 'danger')
             return redirect(url_for('faculty.mark_attendance'))
         
         try:
@@ -60,15 +96,27 @@ def mark_attendance():
             flash('Invalid date format.', 'danger')
             return redirect(url_for('faculty.mark_attendance'))
         
-        # Get all students in faculty's department
-        students = Student.query.filter_by(department=faculty.department).all()
+        # Get students enrolled in the course for this timetable entry
+        if timetable.course_id:
+            enrolled_students = Student.query.join(Enrollment).filter(
+                Enrollment.course_id == timetable.course_id,
+                Enrollment.status == 'enrolled'
+            ).all()
+        else:
+            # Fallback to students in same department and semester
+            enrolled_students = Student.query.filter_by(
+                department_id=faculty.department_id,
+                semester=timetable.semester
+            ).all()
         
-        for student in students:
+        # Mark attendance for enrolled students
+        for student in enrolled_students:
             status = request.form.get(f'student_{student.id}', 'absent')
             
-            # Check if attendance already exists
+            # Check if attendance already exists for this timetable and date
             existing = Attendance.query.filter_by(
                 student_id=student.id,
+                timetable_id=timetable_id,
                 date=att_date
             ).first()
             
@@ -78,6 +126,7 @@ def mark_attendance():
             else:
                 attendance = Attendance(
                     student_id=student.id,
+                    timetable_id=timetable_id,
                     date=att_date,
                     status=status,
                     marked_by=current_user.username
@@ -88,10 +137,10 @@ def mark_attendance():
         flash(f'Attendance marked successfully for {att_date}.', 'success')
         return redirect(url_for('faculty.mark_attendance'))
     
-    # Get students in department
-    students = Student.query.filter_by(department=faculty.department).all()
+    # Get timetable entries for faculty's department
+    timetables = Timetable.query.filter_by(department=faculty.department_ref.code).all()
     
-    return render_template('attendance/mark_attendance.html', students=students)
+    return render_template('attendance/mark_attendance.html', timetables=timetables)
 
 @faculty_bp.route('/upload-notes', methods=['GET', 'POST'])
 @login_required
@@ -131,7 +180,7 @@ def upload_notes():
                 description=description,
                 file_path=file_path,
                 file_name=file_name,
-                department=current_user.faculty.department,
+                department=current_user.faculty.department_ref.code,
                 semester=semester
             )
             db.session.add(note)
@@ -191,9 +240,10 @@ def apply_leave():
     if request.method == 'POST':
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
+        leave_type = request.form.get('leave_type', 'General').strip() or 'General'
         reason = request.form.get('reason', '').strip()
         
-        if not start_date or not end_date or not reason:
+        if not start_date or not end_date or not leave_type or not reason:
             flash('All fields are required.', 'danger')
             return redirect(url_for('faculty.apply_leave'))
         
@@ -209,6 +259,7 @@ def apply_leave():
                 user_id=current_user.id,
                 start_date=start,
                 end_date=end,
+                leave_type=leave_type,
                 reason=reason,
                 status='pending'
             )
@@ -233,4 +284,28 @@ def my_leaves():
     leaves = Leave.query.filter_by(user_id=current_user.id)\
         .order_by(Leave.applied_at.desc()).all()
     
-    return render_template('leave/faculty_leaves.html', leaves=leaves)
+    return render_template('leave/student_leaves.html', leaves=leaves)
+
+@faculty_bp.route('/api/course-students/<int:course_id>')
+@login_required
+def api_course_students(course_id):
+    """API endpoint to get students enrolled in a course"""
+    from flask import jsonify
+    
+    if current_user.role != 'faculty':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get students enrolled in the course
+    students = Student.query.join(Enrollment).filter(
+        Enrollment.course_id == course_id,
+        Enrollment.status == 'enrolled'
+    ).all()
+    
+    students_data = [{
+        'id': student.id,
+        'roll_no': student.roll_no,
+        'username': student.user.username,
+        'semester': student.semester
+    } for student in students]
+    
+    return jsonify({'students': students_data})

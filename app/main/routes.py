@@ -20,10 +20,10 @@ def home():
 def timetable():
     """View timetable"""
     if current_user.role == 'student':
-        department = current_user.student.department
+        department = current_user.student.department_ref.code
         semester = current_user.student.semester
     elif current_user.role == 'faculty':
-        department = current_user.faculty.department
+        department = current_user.faculty.department_ref.code
         semester = None
     else:
         department = None

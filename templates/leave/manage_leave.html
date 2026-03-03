@@ -37,7 +37,10 @@
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-gray-800">{{ leave.user.username }}</h3>
-                    <p class="text-sm text-gray-600">{{ leave.start_date }} to {{ leave.end_date }}</p>
+                    <p class="text-sm text-gray-600">
+                        {{ leave.start_date }} to {{ leave.end_date }}
+                        · <span class="font-semibold">{{ leave.leave_type or 'General' }}</span>
+                    </p>
                 </div>
                 <span class="px-4 py-2 rounded-full text-sm font-semibold
                     {% if leave.status == 'approved' %}

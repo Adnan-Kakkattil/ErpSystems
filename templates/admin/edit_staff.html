@@ -1,14 +1,26 @@
 {% extends "base_portal.html" %}
 
-{% block title %}Add Staff Member - College ERP{% endblock %}
+{% block title %}Edit Staff Member - College ERP{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <!-- Header -->
     <div class="bg-indigo-50 rounded-lg p-6 border-l-4 border-indigo-600">
-        <h1 class="text-3xl font-bold text-gray-800">Add Staff Member</h1>
-        <p class="text-gray-600 mt-2">Add a new staff member to the system</p>
+        <h1 class="text-3xl font-bold text-gray-800">Edit Staff Member</h1>
+        <p class="text-gray-600 mt-2">Update staff member information</p>
     </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <div class="max-w-2xl">
         <div class="bg-white rounded-lg shadow-md p-8">
@@ -18,7 +30,7 @@
                     <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
                         Full Name <span class="text-red-600">*</span>
                     </label>
-                    <input type="text" id="name" name="name" required
+                    <input type="text" id="name" name="name" value="{{ staff.name }}" required
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
@@ -27,7 +39,7 @@
                     <label for="designation" class="block text-sm font-semibold text-gray-700 mb-2">
                         Designation <span class="text-red-600">*</span>
                     </label>
-                    <input type="text" id="designation" name="designation" required
+                    <input type="text" id="designation" name="designation" value="{{ staff.designation }}" required
                            placeholder="e.g., Receptionist, Accountant"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
@@ -41,7 +53,7 @@
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">Select Department</option>
                         {% for dept in departments %}
-                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                            <option value="{{ dept.id }}" {% if dept.id == staff.department_id %}selected{% endif %}>{{ dept.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -51,7 +63,7 @@
                     <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
                         Email (optional)
                     </label>
-                    <input type="email" id="email" name="email"
+                    <input type="email" id="email" name="email" value="{{ staff.email or '' }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
@@ -79,7 +91,7 @@
                             <option value="SG">+65 Singapore</option>
                             <option value="US">+1 United States</option>
                         </select>
-                        <input type="tel" id="phone" name="phone" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter phone number" maxlength="10">
+                        <input type="tel" id="phone" name="phone" value="{{ staff.phone or '' }}" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" maxlength="10">
                     </div>
                     <p class="text-gray-500 text-sm mt-1 phone-hint">Select a country to format phone number</p>
                     <p class="text-red-500 text-sm mt-1 phone-error" style="display: none;"></p>
@@ -90,7 +102,7 @@
                     <label for="office" class="block text-sm font-semibold text-gray-700 mb-2">
                         Office Location (optional)
                     </label>
-                    <input type="text" id="office" name="office"
+                    <input type="text" id="office" name="office" value="{{ staff.office or '' }}"
                            placeholder="e.g., Block A, Room 101"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
@@ -98,7 +110,7 @@
                 <!-- Buttons -->
                 <div class="flex gap-4">
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-8 rounded-lg transition">
-                        <i class="fas fa-plus mr-2"></i>Add Staff Member
+                        <i class="fas fa-save mr-2"></i>Update Staff Member
                     </button>
                     <a href="{{ url_for('admin.manage_staff') }}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-8 rounded-lg transition">
                         Cancel
@@ -114,7 +126,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const countrySelects = document.querySelectorAll('.country-select');
     countrySelects.forEach(select => {
-        // Set default value
+        // Set default value and initialize phone field
         const initial = select.dataset.initial || 'IN';
         select.value = initial;
         

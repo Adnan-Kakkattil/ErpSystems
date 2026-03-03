@@ -21,7 +21,7 @@
                 <div class="flex-1">
                     <h3 class="text-lg font-bold text-gray-800">{{ member.name }}</h3>
                     <p class="text-sm text-indigo-600 font-semibold">{{ member.designation }}</p>
-                    <p class="text-sm text-gray-600">{{ member.department }}</p>
+                    <p class="text-sm text-gray-600">{{ member.department_ref.name }}</p>
 
                     {% if member.phone %}
                     <p class="text-sm text-gray-600 mt-2">

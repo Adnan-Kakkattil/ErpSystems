@@ -10,14 +10,17 @@
 </head>
 <body class="bg-gray-100">
     <!-- Student Sidebar Layout -->
-    <div class="flex h-screen bg-gray-100">
+    <div class="flex h-screen bg-gray-100" id="mainContainer">
+        <!-- Hidden Checkbox for accessibility -->
+        <input type="checkbox" id="sidebarCheckbox" style="display: none;">
+        
         <!-- Sidebar -->
-        <div class="w-64 bg-white shadow-lg">
+        <div id="sidebar" class="w-64 bg-white shadow-lg flex flex-col transition-all duration-300">
             <!-- Logo -->
             <div class="p-6 border-b">
                 <div class="flex items-center">
                     <i class="fas fa-graduation-cap text-blue-600 text-2xl mr-2"></i>
-                    <span class="font-bold text-xl text-gray-800">College ERP</span>
+                    <span class="font-bold text-xl text-gray-800">LUMEN ERP</span>
                 </div>
             </div>
 
@@ -61,17 +64,12 @@
                 </a>
             </nav>
 
-            <!-- User Info at bottom -->
-            <div class="absolute bottom-0 w-64 p-6 border-t bg-gray-50">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="font-semibold text-gray-800">{{ current_user.username }}</p>
-                        <p class="text-sm text-gray-600">{{ student.roll_no }}</p>
-                    </div>
-                    <a href="{{ url_for('auth.logout') }}" class="text-red-600 hover:text-red-800">
-                        <i class="fas fa-sign-out-alt text-lg"></i>
-                    </a>
-                </div>
+            <!-- Logout at bottom -->
+            <div class="p-4 border-t">
+                <a href="{{ url_for('auth.logout') }}" class="flex items-center justify-center w-full px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition font-medium text-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    Logout
+                </a>
             </div>
         </div>
 
@@ -80,11 +78,29 @@
             <!-- Top Header -->
             <header class="bg-white shadow">
                 <div class="flex justify-between items-center px-8 py-4">
-                    <div class="flex-1"></div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-gray-700 font-semibold">{{ student.department }}</span>
-                        <span class="text-gray-500">Semester {{ student.semester }}</span>
+                        <label for="sidebarCheckbox" class="toggleSidebar">
+                            <!-- Hamburger Icon (shows when sidebar is visible) -->
+                            <i class="fas fa-bars toggle-icon-bars" id="sidebarBarsIcon"></i>
+                            <!-- Close Icon (shows when sidebar is hidden) -->
+                            <i class="fas fa-times toggle-icon-close" id="sidebarCloseIcon" style="display: none;"></i>
+                        </label>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        {% if student %}
+                            <span class="text-gray-700 font-semibold">{{ student.department_ref.name }}</span>
+                            <span class="text-gray-500">Semester {{ student.semester }}</span>
+                        {% endif %}
                         <i class="fas fa-user-circle text-gray-400 text-2xl"></i>
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500 uppercase tracking-wide">
+                                {{ 'Student' if student else current_user.role|capitalize }}
+                            </p>
+                            <p class="font-medium text-gray-800">{{ current_user.username }}</p>
+                        </div>
+                        <a href="{{ url_for('auth.logout') }}" class="text-gray-600 hover:text-red-600 transition">
+                            <i class="fas fa-sign-out-alt text-lg"></i>
+                        </a>
                     </div>
                 </div>
             </header>
@@ -114,10 +130,14 @@
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 12px 24px;
+            padding: 10px 16px;
             color: #4b5563;
             text-decoration: none;
             border-left: 4px solid transparent;
+            border-radius: 0.5rem;
+            margin-bottom: 4px;
+            margin-left: 8px;
+            margin-right: 8px;
             transition: all 0.3s ease;
         }
 
@@ -129,17 +149,115 @@
 
         .menu-item:hover {
             background-color: #f3f4f6;
-            color: #1e40af;
+            color: #3b82f6;
+            border-left-color: #3b82f6;
         }
 
         .menu-item.active {
-            background-color: #dbeafe;
-            color: #1e40af;
-            border-left-color: #1e40af;
+            background-color: #e0e7ff;
+            color: #3b82f6;
+            border-left-color: #3b82f6;
             font-weight: 600;
+        }
+
+        /* Toggle Sidebar */
+        #sidebarCheckbox {
+            display: none;
+        }
+
+        .toggleSidebar {
+            cursor: pointer;
+            font-size: 20px;
+            color: #4b5563;
+            transition: color 0.3s ease;
+        }
+
+        .toggleSidebar:hover {
+            color: #3b82f6;
+        }
+
+        /* When sidebar is hidden (toggle active) */
+        #mainContainer.sidebar-hidden #sidebar {
+            transform: translateX(-100%);
+        }
+
+        #mainContainer.sidebar-hidden #sidebarCloseIcon {
+            display: inline-block !important;
+        }
+
+        #mainContainer.sidebar-hidden #sidebarBarsIcon {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 40;
+                transform: translateX(-100%);
+            }
+
+            #mainContainer.sidebar-shown #sidebar {
+                transform: translateX(0);
+            }
         }
     </style>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Toggle sidebar on checkbox change
+        const sidebarCheckbox = document.getElementById('sidebarCheckbox');
+        const mainContainer = document.getElementById('mainContainer');
+        const sidebarBarsIcon = document.getElementById('sidebarBarsIcon');
+        const sidebarCloseIcon = document.getElementById('sidebarCloseIcon');
+        const sidebarLabel = document.querySelector('.toggleSidebar');
+
+        // Handle toggle button click
+        if (sidebarLabel) {
+            sidebarLabel.addEventListener('click', function(e) {
+                e.preventDefault();
+                mainContainer.classList.toggle('sidebar-hidden');
+                
+                // Update icons
+                const isHidden = mainContainer.classList.contains('sidebar-hidden');
+                if (isHidden) {
+                    sidebarBarsIcon.style.display = 'none';
+                    sidebarCloseIcon.style.display = 'inline-block';
+                    sidebarCheckbox.checked = true;
+                } else {
+                    sidebarBarsIcon.style.display = 'inline-block';
+                    sidebarCloseIcon.style.display = 'none';
+                    sidebarCheckbox.checked = false;
+                }
+            });
+        }
+
+        // Also handle checkbox change for accessibility
+        sidebarCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                mainContainer.classList.add('sidebar-hidden');
+                sidebarBarsIcon.style.display = 'none';
+                sidebarCloseIcon.style.display = 'inline-block';
+            } else {
+                mainContainer.classList.remove('sidebar-hidden');
+                sidebarBarsIcon.style.display = 'inline-block';
+                sidebarCloseIcon.style.display = 'none';
+            }
+        });
+
+        // Close sidebar when a menu item is clicked (optional - removes on mobile)
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    mainContainer.classList.remove('sidebar-hidden');
+                    sidebarCheckbox.checked = false;
+                    sidebarBarsIcon.style.display = 'inline-block';
+                    sidebarCloseIcon.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
